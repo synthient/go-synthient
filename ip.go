@@ -9,13 +9,13 @@ import (
 type IP struct {
 	IP      string `json:"ip"`
 	Network struct {
-		Asn  int    `json:"asn"`
-		Isp  string `json:"isp"`
-		Type string `json:"type"`
-		// Org        interface{} `json:"org"`
-		// AbuseEmail interface{} `json:"abuse_email"`
-		// AbusePhone interface{} `json:"abuse_phone"`
-		// Domain     interface{} `json:"domain"`
+		Asn        int    `json:"asn"`
+		Isp        string `json:"isp"`
+		Type       string `json:"type"`
+		Org        string `json:"org"`
+		AbuseEmail string `json:"abuse_email"`
+		AbusePhone string `json:"abuse_phone"`
+		Domain     string `json:"domain"`
 	} `json:"network"`
 	Location struct {
 		Country   string  `json:"country"`
@@ -27,7 +27,10 @@ type IP struct {
 		GeoHash   string  `json:"geo_hash"`
 	} `json:"location"`
 	IPData struct {
-		// Devices     []interface{} `json:"devices"`
+		Devices []struct {
+			OS      string `json:"os"`
+			Version string `json:"version"`
+		} `json:"devices"`
 		DeviceCount int      `json:"device_count"`
 		Behavior    []string `json:"behavior"`
 		Categories  []string `json:"categories"`
