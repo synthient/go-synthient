@@ -76,14 +76,14 @@ func requestJSON[T any](
 	var zeroValue T // to be used as "nil"
 	body, err := request(options, client, req, expectedStatusCode)
 	if err != nil {
-		return zeroValue, fmt.Errorf("%w parsing json failed", err)
+		return zeroValue, fmt.Errorf("making request: %w", err)
 	}
 	defer func() { _ = body.Close() }()
 
 	var data T
 	err = json.NewDecoder(body).Decode(&data)
 	if err != nil {
-		return zeroValue, fmt.Errorf("parsing json failed: %w", err)
+		return zeroValue, fmt.Errorf("parsing json: %w", err)
 	}
 
 	return data, nil
