@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+// RequestOptions configures per-request behavior for client API calls.
+//
+// Context is applied to the outgoing HTTP request (for cancellation, deadlines,
+// and request-scoped values). If nil, the client uses context.Background().
 type RequestOptions struct {
 	Context context.Context
 }

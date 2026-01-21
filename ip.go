@@ -6,6 +6,7 @@ import (
 	"net/url"
 )
 
+// IP represents the API response for an IP lookup.
 type IP struct {
 	IP      string `json:"ip"`
 	Network struct {
@@ -43,6 +44,15 @@ type IP struct {
 	} `json:"ip_data"`
 }
 
+// GetIP looks up enrichment details for a single IPv4/IPv6 address.
+//
+// It performs an HTTP GET request to the API endpoint:
+//
+//	{BaseAPI}/lookup/ip/{ip}
+//
+// The provided ip is inserted into the request path (and should be a valid IP
+// string). Request behavior such as context can be configured via options. A successful response
+// (HTTP 200 OK) is decoded as JSON into an IP value and returned.
 func (client *Client) GetIP(ip string, options *RequestOptions) (IP, error) {
 	path, err := url.JoinPath(client.BaseAPI.String(), "lookup", "ip", ip)
 	if err != nil {

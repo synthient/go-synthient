@@ -11,6 +11,11 @@ import (
 	"strconv"
 )
 
+// AnonymizersQuery defines optional filters and output options for the anonymizers feed download.
+//
+// Pointer fields are optional; when nil, the corresponding filter is omitted from the request.
+// Format selects the feed encoding (API-defined), Full requests the expanded dataset when true,
+// and Order controls result ordering (API-defined).
 type AnonymizersQuery struct {
 	Provider     *string
 	Type         *string
@@ -21,6 +26,15 @@ type AnonymizersQuery struct {
 	Order        string
 }
 
+// DownloadAnonymizersFeed downloads the anonymizers feed and streams it directly to the given
+// filepath.
+//
+// The request is built from query and issued as a GET to:
+//
+//	{BaseFeeds}/feeds/anonymizers
+//
+// The destination file must not already exist; if it does, this returns ErrFileExists.
+// On success, it returns the number of bytes written to disk.
 func (client *Client) DownloadAnonymizersFeed(
 	query AnonymizersQuery,
 	filepath string,
