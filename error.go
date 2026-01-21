@@ -3,7 +3,8 @@ package synthient
 import "errors"
 
 var (
-	ErrNoToken = errors.New("no token provided for client")
+	ErrNoToken    = errors.New("no token provided for client")
+	ErrFileExists = errors.New("file already exists")
 
 	// http related errors
 	ErrBadRequest           = errors.New("invalid input parameters")

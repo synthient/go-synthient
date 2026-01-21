@@ -44,23 +44,19 @@ type IP struct {
 }
 
 func (client *Client) GetIP(ip string, options *RequestOptions) (IP, error) {
-	path, err := url.JoinPath(client.Base.Path, "lookup", "ip", ip)
+	path, err := url.JoinPath(client.BaseAPI.String(), "lookup", "ip", ip)
 	if err != nil {
-		return IP{}, fmt.Errorf("%w failed to create path for resource request", err)
-	}
-	client.Base.Path = path
-	req, err := http.NewRequest(
-		http.MethodGet,
-		client.Base.String(),
-		nil,
-	)
-	if err != nil {
-		return IP{}, fmt.Errorf("%w failed to make request for ip \"%s\"", err, ip)
+		return IP{}, fmt.Errorf("creating path for ip request: %w", err)
 	}
 
-	resp, err := request[IP](options, client, req, http.StatusOK)
+	req, err := http.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return IP{}, err
+		return IP{}, fmt.Errorf("making request for IP (%s): %w", ip, err)
+	}
+
+	resp, err := requestJSON[IP](options, client, req, http.StatusOK)
+	if err != nil {
+		return IP{}, fmt.Errorf("requesting JSON data: %w", err)
 	}
 
 	return resp, nil

@@ -3,6 +3,7 @@ package synthient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,64 +14,76 @@ type RequestOptions struct {
 	Context context.Context
 }
 
-func request[T any](
+// IMPORTANT: make sure to close the returned reader
+func request(
 	options *RequestOptions,
 	client *Client,
 	req *http.Request,
 	expectedStatusCode int,
-) (T, error) {
-	var zeroValue T // to be used as "nil"
+) (io.ReadCloser, error) {
 	if options == nil {
 		options = &RequestOptions{Context: context.Background()}
 	}
 
 	if strings.TrimSpace(client.Token) == "" {
-		return zeroValue, ErrNoToken
+		return nil, ErrNoToken
 	}
 	req.Header.Add("Authorization", client.Token)
 	req = req.WithContext(options.Context)
 
 	resp, err := client.HttpClient.Do(req)
 	if err != nil {
-		return zeroValue, fmt.Errorf("%w failed to perform request to %s", err, req.URL.String())
+		return nil, fmt.Errorf("performing request to %s: %w", req.URL.String(), err)
+	}
+
+	fail := func(e error) (io.ReadCloser, error) {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			return nil, fmt.Errorf("closing file: %w", errors.Join(e, closeErr))
+		}
+		return nil, e
 	}
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
-		err = ErrBadRequest
+		return fail(ErrBadRequest)
 	case http.StatusUnauthorized:
-		err = ErrUnauthorized
+		return fail(ErrUnauthorized)
 	case http.StatusPaymentRequired:
-		err = ErrPaymentRequired
+		return fail(ErrPaymentRequired)
 	case http.StatusInternalServerError:
-		err = ErrInternalServerError
-	}
-	if err != nil {
-		return zeroValue, err
+		return fail(ErrInternalServerError)
 	}
 	if resp.StatusCode != expectedStatusCode {
-		return zeroValue, fmt.Errorf(
-			"%w: expected status code of %d but got a status code of %d",
-			ErrUnexpectedStatusCode,
+		err = fmt.Errorf(
+			"status of %d (%d expected) making request: %w",
 			expectedStatusCode,
 			resp.StatusCode,
+			ErrUnexpectedStatusCode,
 		)
+		return fail(err)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return zeroValue, fmt.Errorf("%w reading response body failed", err)
-	}
+	return resp.Body, nil
+}
 
-	err = resp.Body.Close()
-	if err != nil {
-		return zeroValue, fmt.Errorf("%w failed to close response body", err)
-	}
-
-	var data T
-	err = json.Unmarshal(body, &data)
+func requestJSON[T any](
+	options *RequestOptions,
+	client *Client,
+	req *http.Request,
+	expectedStatusCode int,
+) (T, error) {
+	var zeroValue T // to be used as "nil"
+	body, err := request(options, client, req, expectedStatusCode)
 	if err != nil {
 		return zeroValue, fmt.Errorf("%w parsing json failed", err)
+	}
+	defer func() { _ = body.Close() }()
+
+	var data T
+	err = json.NewDecoder(body).Decode(&data)
+	if err != nil {
+		return zeroValue, fmt.Errorf("parsing json failed: %w", err)
 	}
 
 	return data, nil
