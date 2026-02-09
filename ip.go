@@ -6,7 +6,20 @@ import (
 	"net/url"
 )
 
-// IP represents the API response for an IP lookup.
+// IP represents the JSON response returned by the Synthient IP lookup endpoint.
+//
+// It groups data into three major sections:
+//
+//   - Network: ASN/ISP and ownership/abuse contacts for the IP’s network.
+//   - Location: coarse geolocation attributes associated with the IP.
+//   - IPData: device/behavior/category/enrichment signals and an overall risk score.
+//
+// Fields and nested structs map 1:1 to the API’s JSON payload via struct tags.
+// Note that values (especially geolocation and “risk”) are provider-derived and
+// may be approximate.
+//
+// Commonly used fields include IP.IP, Network.Asn/Network.Isp, Location.Country,
+// and IPData.IPRisk.
 type IP struct {
 	IP      string `json:"ip"`
 	Network struct {
@@ -44,15 +57,21 @@ type IP struct {
 	} `json:"ip_data"`
 }
 
-// GetIP looks up enrichment details for a single IPv4/IPv6 address.
+// GetIP looks up enrichment data for a single IP address.
 //
-// It performs an HTTP GET request to the API endpoint:
+// It performs an HTTP GET request to the Synthient IP lookup endpoint and
+// unmarshals the JSON response into an IP value. The request is expected to
+// return http.StatusOK; non-OK responses are returned as errors.
 //
-//	{BaseAPI}/lookup/ip/{ip}
+// options can be used to customize request behavior (timeouts, headers, etc.).
 //
-// The provided ip is inserted into the request path (and should be a valid IP
-// string). Request behavior such as context can be configured via options. A successful response
-// (HTTP 200 OK) is decoded as JSON into an IP value and returned.
+// Example:
+//
+//	info, err := client.GetIP("8.8.8.8", nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Printf("%+v\n", info)
 func (client *Client) GetIP(ip string, options *RequestOptions) (IP, error) {
 	path, err := url.JoinPath(client.BaseAPI.String(), "lookup", "ip", ip)
 	if err != nil {

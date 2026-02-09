@@ -14,5 +14,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to get ip address: %s", err)
 	}
-	fmt.Println(resp.IP)
+	fmt.Println(resp)
 }
