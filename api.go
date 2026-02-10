@@ -62,9 +62,11 @@ func request(
 	}
 	if resp.StatusCode != expectedStatusCode {
 		err = fmt.Errorf(
-			"status of %d (%d expected) making request: %w",
-			expectedStatusCode,
+			`status of %d "%s" (%d "%s" expected) making request: %w`,
 			resp.StatusCode,
+			http.StatusText(resp.StatusCode),
+			expectedStatusCode,
+			http.StatusText(expectedStatusCode),
 			ErrUnexpectedStatusCode,
 		)
 		return fail(err)
