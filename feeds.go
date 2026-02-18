@@ -98,7 +98,7 @@ func (client *Client) StreamAnonymizersFeed(
 		return nil, fmt.Errorf("creating url for anonymizer feed: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, path, nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?%s", path, params.Encode()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request for anonymizer data: %w", err)
 	}
