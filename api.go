@@ -24,7 +24,7 @@ type RequestOptions struct {
 func request(
 	options *RequestOptions,
 	client *Client,
-	req *http.Request,
+	request *http.Request,
 	expectedStatusCode int,
 ) (io.ReadCloser, error) {
 	if options == nil {
@@ -34,25 +34,37 @@ func request(
 	if strings.TrimSpace(client.Token) == "" {
 		return nil, ErrNoToken
 	}
-	req.Header.Add("Authorization", client.Token)
-	req = req.WithContext(options.Context)
+	request.Header.Add("Authorization", client.Token)
+	request = request.WithContext(options.Context)
 
-	resp, err := client.HttpClient.Do(req)
+	response, err := client.HttpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("performing request to %s: %w", req.URL.String(), err)
+		return nil, fmt.Errorf("performing request to %s: %w", request.URL.String(), err)
 	}
 
-	fail := func(e error) (io.ReadCloser, error) {
-		closeErr := resp.Body.Close()
+	fail := func(err error) (io.ReadCloser, error) {
+		closeErr := response.Body.Close()
 		if closeErr != nil {
-			return nil, fmt.Errorf("closing file: %w", errors.Join(e, closeErr))
+			return nil, fmt.Errorf("closing file: %w", errors.Join(err, closeErr))
 		}
-		return nil, e
+		return nil, err
 	}
 
-	switch resp.StatusCode {
+	switch response.StatusCode {
 	case http.StatusBadRequest:
-		return fail(ErrBadRequest)
+		primaryError := ErrBadRequest
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return fail(primaryError)
+		}
+		var e struct {
+			Error string `json:"error"`
+		}
+		err = json.Unmarshal(body, &e)
+		if err != nil {
+			return fail(primaryError)
+		}
+		return fail(fmt.Errorf("%w: %s", primaryError, e.Error))
 	case http.StatusUnauthorized:
 		return fail(ErrUnauthorized)
 	case http.StatusPaymentRequired:
@@ -60,11 +72,11 @@ func request(
 	case http.StatusInternalServerError:
 		return fail(ErrInternalServerError)
 	}
-	if resp.StatusCode != expectedStatusCode {
+	if response.StatusCode != expectedStatusCode {
 		err = fmt.Errorf(
 			`status of %d "%s" (%d "%s" expected) making request: %w`,
-			resp.StatusCode,
-			http.StatusText(resp.StatusCode),
+			response.StatusCode,
+			http.StatusText(response.StatusCode),
 			expectedStatusCode,
 			http.StatusText(expectedStatusCode),
 			ErrUnexpectedStatusCode,
@@ -72,7 +84,7 @@ func request(
 		return fail(err)
 	}
 
-	return resp.Body, nil
+	return response.Body, nil
 }
 
 func requestJSON[T any](

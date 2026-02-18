@@ -13,7 +13,7 @@ func main() {
 	stream, err := client.StreamAnonymizersFeed(synthient.AnonymizersQuery{
 		Provider:     "BIRDPROXIES",
 		Type:         "RESIDENTIAL_PROXY",
-		LastObserved: "7D",
+		LastObserved: "24hr",
 		Format:       "CSV",
 		CountryCode:  "US",
 		Full:         false,
