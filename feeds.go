@@ -2,6 +2,7 @@ package synthient
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -154,4 +155,60 @@ func (client *Client) FeedSnapshotMeta(
 	}
 
 	return resp, nil
+}
+
+// DownloadFeedSnapshot downloads a Parquet snapshot and returns a streaming reader for its
+// contents. The API issues a 307 redirect to a presigned URL valid for 24 hours; this
+// method follows the redirect automatically.
+//
+// stream must be one of: proxies, anonymizers, torrents, honeypot_http, honeypot_https,
+// honeypot_dns, or honeypot_adb.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	hour := 21
+//	r, err := client.DownloadFeedSnapshot("proxies", "2026-05-07", &hour, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadFeedSnapshot(
+	stream string,
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	segments := []string{"feeds", stream, "export", date}
+	if hour != nil {
+		segments = append(segments, strconv.Itoa(*hour))
+	}
+
+	path, err := url.JoinPath(client.BaseAPI.String(), segments...)
+	if err != nil {
+		return nil, fmt.Errorf("creating path for feed snapshot download request: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"making request for feed snapshot download (%s, %s): %w",
+			stream,
+			date,
+			err,
+		)
+	}
+
+	body, err := request(requestOptions, client, req, http.StatusOK)
+	if err != nil {
+		return nil, fmt.Errorf("requesting feed snapshot: %w", err)
+	}
+
+	return body, nil
 }
