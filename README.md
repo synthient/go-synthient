@@ -1,15 +1,15 @@
 # go-synthient
 
-[![godoc](https://pkg.go.dev/badge/github.com/synthient/go-synthient?utm_source=godoc)](https://pkg.go.dev/github.com/synthient/go-synthient)
+[![godoc](https://pkg.go.dev/badge/github.com/synthient/go-synthient/v2?utm_source=godoc)](https://pkg.go.dev/github.com/synthient/go-synthient/v2)
 ![go.mod version](https://img.shields.io/github/go-mod/go-version/synthient/go-synthient)
-[![report card](https://goreportcard.com/badge/github.com/synthient/go-synthient)](https://goreportcard.com/report/github.com/synthient/go-synthient)
+[![report card](https://goreportcard.com/badge/github.com/synthient/go-synthient/v2)](https://goreportcard.com/report/github.com/synthient/go-synthient/v2)
 
 Synthient SDK for Go.
 
 ## Installation
 
 ```bash
-go get -u github.com/synthient/go-synthient
+go get -u github.com/synthient/go-synthient/v2
 ```
 
 Requires Go 1.23 or later (real-time streams use `iter.Seq2`).
@@ -32,7 +32,7 @@ opts := &synthient.RequestOptions{Context: ctx}
 
 ## IP lookup
 
-[`client.GetIP`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.GetIP) returns enrichment data for a single address:
+[`client.GetIP`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.GetIP) returns enrichment data for a single address:
 
 ```go
 ip, err := client.GetIP("213.149.183.127", nil)
@@ -42,7 +42,7 @@ if err != nil {
 fmt.Println(ip.Intelligence.RiskScore, ip.Network.Isp, ip.Location.Country)
 ```
 
-[`client.GetIPs`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.GetIPs) looks up multiple addresses in one request:
+[`client.GetIPs`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.GetIPs) looks up multiple addresses in one request:
 
 ```go
 results, err := client.GetIPs([]string{"8.8.8.8", "1.1.1.1"}, nil)
@@ -56,7 +56,7 @@ for _, ip := range results {
 
 ## Domain lookup
 
-[`client.GetDomain`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.GetDomain) returns traffic statistics, geo distribution, and recent events for a domain:
+[`client.GetDomain`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.GetDomain) returns traffic statistics, geo distribution, and recent events for a domain:
 
 ```go
 domain, err := client.GetDomain("google.com", nil)
@@ -68,7 +68,7 @@ fmt.Println(domain.Stats.Events24H, domain.Status)
 
 ## Account
 
-[`client.GetAccount`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.GetAccount) returns profile and quota details for the authenticated user:
+[`client.GetAccount`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.GetAccount) returns profile and quota details for the authenticated user:
 
 ```go
 account, err := client.GetAccount(nil)
@@ -84,7 +84,7 @@ Stream identifiers: `proxies`, `anonymizers`, `torrents`, `honeypot_http`, `hone
 
 ### List snapshots
 
-[`client.FeedSnapshots`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.FeedSnapshots) returns a paginated list of available daily and hourly snapshots, newest-first:
+[`client.FeedSnapshots`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.FeedSnapshots) returns a paginated list of available daily and hourly snapshots, newest-first:
 
 ```go
 var cursor string
@@ -108,7 +108,7 @@ for {
 
 ### Snapshot metadata
 
-[`client.FeedSnapshotMeta`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.FeedSnapshotMeta) returns the checksum, row count, byte size, and parquet schema for a snapshot. `date` accepts `"latest"`, `"YYYY-MM-DD"`, or `"YYYY-MM-DD/HH"`:
+[`client.FeedSnapshotMeta`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.FeedSnapshotMeta) returns the checksum, row count, byte size, and parquet schema for a snapshot. `date` accepts `"latest"`, `"YYYY-MM-DD"`, or `"YYYY-MM-DD/HH"`:
 
 ```go
 meta, err := client.FeedSnapshotMeta("proxies", "latest", nil)
@@ -123,7 +123,7 @@ for _, field := range meta.Schema.Fields {
 
 ### Download a snapshot
 
-[`client.DownloadFeedSnapshot`](https://pkg.go.dev/github.com/synthient/go-synthient#Client.DownloadFeedSnapshot) follows the API's 307 redirect and returns a streaming reader for the parquet file. The caller must close it.
+[`client.DownloadFeedSnapshot`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadFeedSnapshot) follows the API's 307 redirect and returns a streaming reader for the parquet file. The caller must close it.
 
 Pass a non-nil `hour` pointer (0–23) to address a specific hourly snapshot within the current UTC day:
 
@@ -161,7 +161,7 @@ for event, err := range client.StreamProxy(nil) {
 }
 ```
 
-[`ProxyEvent`](https://pkg.go.dev/github.com/synthient/go-synthient#ProxyEvent) fields: `IP`, `Provider`, `Type`, `Timestamp`, `CountryCode`, `ASN`.
+[`ProxyEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#ProxyEvent) fields: `IP`, `Provider`, `Type`, `Timestamp`, `CountryCode`, `ASN`.
 
 ### Anonymizers
 
@@ -174,7 +174,7 @@ for event, err := range client.StreamAnonymizer(nil) {
 }
 ```
 
-[`AnonymizerEvent`](https://pkg.go.dev/github.com/synthient/go-synthient#AnonymizerEvent) fields: `RangeStart`, `RangeEnd`, `Provider`, `Type`, `Timestamp`.
+[`AnonymizerEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#AnonymizerEvent) fields: `RangeStart`, `RangeEnd`, `Provider`, `Type`, `Timestamp`.
 
 ### Torrents
 
@@ -187,7 +187,7 @@ for event, err := range client.StreamTorrent(nil) {
 }
 ```
 
-[`TorrentEvent`](https://pkg.go.dev/github.com/synthient/go-synthient#TorrentEvent) fields: `InfoHash`, `Name`, `MagnetURI`, `TotalSize`, `PieceLength`, `FileCount`, `Files`, `Peers`, `Timestamp`.
+[`TorrentEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#TorrentEvent) fields: `InfoHash`, `Name`, `MagnetURI`, `TotalSize`, `PieceLength`, `FileCount`, `Files`, `Peers`, `Timestamp`.
 
 ## Helios sensor streams
 
@@ -202,7 +202,7 @@ for event, err := range client.StreamHeliosHTTP(nil) {
 }
 ```
 
-[`HeliosHTTPEvent`](https://pkg.go.dev/github.com/synthient/go-synthient#HeliosHTTPEvent) fields: `Timestamp`, `Domain`, `Port`, `TunnelID`, `Protocol`, `Details` (method, URI, version, headers map), `Raw`, `Meta` (pool ID, provider, proxy IP, server).
+[`HeliosHTTPEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#HeliosHTTPEvent) fields: `Timestamp`, `Domain`, `Port`, `TunnelID`, `Protocol`, `Details` (method, URI, version, headers map), `Raw`, `Meta` (pool ID, provider, proxy IP, server).
 
 ### TLS ClientHello captures
 
@@ -218,7 +218,7 @@ for event, err := range client.StreamHeliosTLS(nil) {
 }
 ```
 
-[`HeliosTLSEvent`](https://pkg.go.dev/github.com/synthient/go-synthient#HeliosTLSEvent) carries the fully parsed ClientHello in `Details` ([`*HeliosTLSDetails`](https://pkg.go.dev/github.com/synthient/go-synthient#HeliosTLSDetails)), which is `nil` when the sensor could not parse the handshake. Details includes cipher suites, extensions, supported groups, signature algorithms, key share groups, supported versions, and boolean handshake flags (`extended_master_secret`, `renegotiation_info`, `has_grease`, etc.).
+[`HeliosTLSEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#HeliosTLSEvent) carries the fully parsed ClientHello in `Details` ([`*HeliosTLSDetails`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#HeliosTLSDetails)), which is `nil` when the sensor could not parse the handshake. Details includes cipher suites, extensions, supported groups, signature algorithms, key share groups, supported versions, and boolean handshake flags (`extended_master_secret`, `renegotiation_info`, `has_grease`, etc.).
 
 ## Client customization
 

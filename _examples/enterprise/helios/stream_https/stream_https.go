@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/synthient/go-synthient"
+	"github.com/synthient/go-synthient/v2"
 )
 
 func main() {
