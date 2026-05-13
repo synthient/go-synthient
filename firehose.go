@@ -49,25 +49,26 @@ type AnonymizerEvent struct {
 	Timestamp  int64  `json:"timestamp"`
 }
 
-func streamFeed[T any](client *Client, feedSegment string, requestOptions *RequestOptions) iter.Seq2[T, error] {
+func streamFeed[T any](client *Client, requestOptions *RequestOptions, pathSegments ...string) iter.Seq2[T, error] {
+	label := pathSegments[len(pathSegments)-2] // e.g. "proxies", "http"
 	return func(yield func(T, error) bool) {
 		var zero T
 
-		path, err := url.JoinPath(client.BaseAPI.String(), "feeds", feedSegment, "stream")
+		path, err := url.JoinPath(client.BaseAPI.String(), pathSegments...)
 		if err != nil {
-			yield(zero, fmt.Errorf("creating path for %s stream request: %w", feedSegment, err))
+			yield(zero, fmt.Errorf("creating path for %s stream request: %w", label, err))
 			return
 		}
 
 		req, err := http.NewRequest(http.MethodGet, path, nil)
 		if err != nil {
-			yield(zero, fmt.Errorf("making request for %s stream: %w", feedSegment, err))
+			yield(zero, fmt.Errorf("making request for %s stream: %w", label, err))
 			return
 		}
 
 		body, err := request(requestOptions, client, req, http.StatusOK)
 		if err != nil {
-			yield(zero, fmt.Errorf("connecting to %s stream: %w", feedSegment, err))
+			yield(zero, fmt.Errorf("connecting to %s stream: %w", label, err))
 			return
 		}
 		defer func() { _ = body.Close() }()
@@ -77,7 +78,7 @@ func streamFeed[T any](client *Client, feedSegment string, requestOptions *Reque
 			var event T
 			err = dec.Decode(&event)
 			if err != nil {
-				yield(zero, fmt.Errorf("decoding %s stream event: %w", feedSegment, err))
+				yield(zero, fmt.Errorf("decoding %s stream event: %w", label, err))
 				return
 			}
 			if !yield(event, nil) {
@@ -100,7 +101,7 @@ func streamFeed[T any](client *Client, feedSegment string, requestOptions *Reque
 //		fmt.Printf("%s %s %s\n", event.IP, event.Provider, event.CountryCode)
 //	}
 func (client *Client) StreamProxy(requestOptions *RequestOptions) iter.Seq2[ProxyEvent, error] {
-	return streamFeed[ProxyEvent](client, "proxies", requestOptions)
+	return streamFeed[ProxyEvent](client, requestOptions, "feeds", "proxies", "stream")
 }
 
 // StreamAnonymizer connects to the real-time anonymizer stream and returns an iterator
@@ -118,7 +119,7 @@ func (client *Client) StreamProxy(requestOptions *RequestOptions) iter.Seq2[Prox
 //		fmt.Printf("%s-%s %s %s\n", event.RangeStart, event.RangeEnd, event.Type, event.Provider)
 //	}
 func (client *Client) StreamAnonymizer(requestOptions *RequestOptions) iter.Seq2[AnonymizerEvent, error] {
-	return streamFeed[AnonymizerEvent](client, "anonymizers", requestOptions)
+	return streamFeed[AnonymizerEvent](client, requestOptions, "feeds", "anonymizers", "stream")
 }
 
 // StreamTorrent connects to the real-time torrent stream and returns an iterator that
@@ -136,5 +137,5 @@ func (client *Client) StreamAnonymizer(requestOptions *RequestOptions) iter.Seq2
 //		fmt.Printf("%s %s %d peers\n", event.InfoHash, event.Name, len(event.Peers))
 //	}
 func (client *Client) StreamTorrent(requestOptions *RequestOptions) iter.Seq2[TorrentEvent, error] {
-	return streamFeed[TorrentEvent](client, "torrents", requestOptions)
+	return streamFeed[TorrentEvent](client, requestOptions, "feeds", "torrents", "stream")
 }
