@@ -36,29 +36,35 @@ type HeliosTLSDetails struct {
 		Code int    `json:"code"`
 		Name string `json:"name"`
 	} `json:"cipher_suites"`
-	CompressionMethods    []int    `json:"compression_methods"`
-	SNI                   string   `json:"sni"`
-	SupportedVersions     []string `json:"supported_versions"`
-	SupportedGroups       []string `json:"supported_groups"`
-	ECPointFormats        []int    `json:"ec_point_formats"`
-	SignatureAlgorithms   []string `json:"signature_algorithms"`
-	Extensions            []struct {
+	CompressionMethods []int    `json:"compression_methods"`
+	SNI                string   `json:"sni"`
+	SupportedVersions  []string `json:"supported_versions"`
+	SupportedGroups    []struct {
+		Code int    `json:"code"`
+		Name string `json:"name"`
+	} `json:"supported_groups"`
+	ECPointFormats      []string `json:"ec_point_formats"`
+	SignatureAlgorithms []struct {
+		Code int    `json:"code"`
+		Name string `json:"name"`
+	} `json:"signature_algorithms"`
+	Extensions []struct {
 		Code   int    `json:"code"`
 		Name   string `json:"name"`
 		Length int    `json:"length"`
 	} `json:"extensions"`
-	KeyShareGroups       []string `json:"key_share_groups"`
-	PSKKeyExchangeModes  []int    `json:"psk_key_exchange_modes"`
+	KeyShareGroups      []string `json:"key_share_groups"`
+	PSKKeyExchangeModes []string `json:"psk_key_exchange_modes"`
 
-	ExtendedMasterSecret       bool `json:"extended_master_secret"`
-	RenegotiationInfo          bool `json:"renegotiation_info"`
-	StatusRequest              bool `json:"status_request"`
+	ExtendedMasterSecret        bool `json:"extended_master_secret"`
+	RenegotiationInfo           bool `json:"renegotiation_info"`
+	StatusRequest               bool `json:"status_request"`
 	SignedCertificateTimestamps bool `json:"signed_certificate_timestamps"`
-	HasGREASE                  bool `json:"has_grease"`
-	EncryptThenMAC             bool `json:"encrypt_then_mac"`
-	PostHandshakeAuth          bool `json:"post_handshake_auth"`
-	DelegatedCredentials       bool `json:"delegated_credentials"`
-	ApplicationSettings        bool `json:"application_settings"`
+	HasGREASE                   bool `json:"has_grease"`
+	EncryptThenMAC              bool `json:"encrypt_then_mac"`
+	PostHandshakeAuth           bool `json:"post_handshake_auth"`
+	DelegatedCredentials        bool `json:"delegated_credentials"`
+	ApplicationSettings         bool `json:"application_settings"`
 }
 
 // HeliosTLSEvent is a single TLS ClientHello capture delivered by the Helios HTTPS sensor stream.
@@ -91,73 +97,81 @@ type HeliosTLSEvent struct {
 //			log.Fatal(err)
 //		}
 //		if event.Details != nil {
-//			fmt.Printf("%s  %s  suites=%d\n", event.Domain, event.Details.HandshakeVersion, len(event.Details.CipherSuites))
+//			fmt.Printf("%s  %s  suites=%d\n", event.Domain, event.Details.HandshakeVersion,
+//
+// len(event.Details.CipherSuites))
+//
 //		}
 //	}
-func (client *Client) StreamHeliosTLS(requestOptions *RequestOptions) iter.Seq2[HeliosTLSEvent, error] {
+func (client *Client) StreamHeliosTLS(
+	requestOptions *RequestOptions,
+) iter.Seq2[HeliosTLSEvent, error] {
 	return streamFeed[HeliosTLSEvent](client, requestOptions, "feeds", "helio", "https", "stream")
 }
 
-// HeliosDNSEvent is a single DNS resolution observation delivered by the Helios DNS sensor stream.
-type HeliosDNSEvent struct {
-	Timestamp int64  `json:"timestamp"`
-	TunnelID  int64  `json:"tunnel_id"`
-	Domain    string `json:"domain"`
-	Port      int    `json:"port"`
-	Meta      struct {
-		PoolID   string `json:"pool_id"`
-		Provider string `json:"provider"`
-		ProxyIP  string `json:"proxy_ip"`
-		Server   string `json:"server"`
-	} `json:"meta"`
-}
+// // HeliosDNSEvent is a single DNS resolution observation delivered by the Helios DNS sensor
+// stream.
+// type HeliosDNSEvent struct {
+// 	Timestamp int64  `json:"timestamp"`
+// 	TunnelID  int64  `json:"tunnel_id"`
+// 	Domain    string `json:"domain"`
+// 	Port      int    `json:"port"`
+// 	Meta      struct {
+// 		PoolID   string `json:"pool_id"`
+// 		Provider string `json:"provider"`
+// 		ProxyIP  string `json:"proxy_ip"`
+// 		Server   string `json:"server"`
+// 	} `json:"meta"`
+// }
 
-// HeliosADBEvent is a single Android Debug Bridge command capture delivered by the Helios
-// ADB sensor stream.
-type HeliosADBEvent struct {
-	Session      string `json:"session"`
-	SequentialID int64  `json:"sequential_id"`
-	Command      string `json:"command"`
-	Hash         string `json:"hash"`
-}
+// // HeliosADBEvent is a single Android Debug Bridge command capture delivered by the Helios
+// // ADB sensor stream.
+// type HeliosADBEvent struct {
+// 	Session      string `json:"session"`
+// 	SequentialID int64  `json:"sequential_id"`
+// 	Command      string `json:"command"`
+// 	Hash         string `json:"hash"`
+// }
 
-// StreamHeliosADB connects to the real-time Helios ADB capture stream and returns an
-// iterator that yields one HeliosADBEvent per newline-delimited JSON event. Each event
-// contains the raw shell command an attacker executed, the session hash grouping commands
-// from the same connection, and a SHA-256 of the command bytes for deduplication across
-// sessions. The stream runs until the connection is closed, the context in requestOptions
-// is cancelled, or a decode error occurs.
-//
-// Example:
-//
-//	for event, err := range client.StreamHeliosADB(nil) {
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//		fmt.Printf("[%s #%d] %s\n", event.Session, event.SequentialID, event.Command)
-//	}
-func (client *Client) StreamHeliosADB(requestOptions *RequestOptions) iter.Seq2[HeliosADBEvent, error] {
-	return streamFeed[HeliosADBEvent](client, requestOptions, "feeds", "helio", "adb", "stream")
-}
+// // StreamHeliosADB connects to the real-time Helios ADB capture stream and returns an
+// // iterator that yields one HeliosADBEvent per newline-delimited JSON event. Each event
+// // contains the raw shell command an attacker executed, the session hash grouping commands
+// // from the same connection, and a SHA-256 of the command bytes for deduplication across
+// // sessions. The stream runs until the connection is closed, the context in requestOptions
+// // is cancelled, or a decode error occurs.
+// //
+// // Example:
+// //
+// //	for event, err := range client.StreamHeliosADB(nil) {
+// //		if err != nil {
+// //			log.Fatal(err)
+// //		}
+// //		fmt.Printf("[%s #%d] %s\n", event.Session, event.SequentialID, event.Command)
+// //	}
+// func (client *Client) StreamHeliosADB(requestOptions *RequestOptions) iter.Seq2[HeliosADBEvent,
+// error] {
+// 	return streamFeed[HeliosADBEvent](client, requestOptions, "feeds", "helio", "adb", "stream")
+// }
 
-// StreamHeliosDNS connects to the real-time Helios DNS capture stream and returns an
-// iterator that yields one HeliosDNSEvent per newline-delimited JSON event. Each event
-// records the hostname an inbound flow resolved and the destination port, useful for
-// detecting C2 lookups and fast-flux infrastructure. TunnelID joins back to matching
-// HTTP and TLS captures from the same flow. The stream runs until the connection is
-// closed, the context in requestOptions is cancelled, or a decode error occurs.
-//
-// Example:
-//
-//	for event, err := range client.StreamHeliosDNS(nil) {
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//		fmt.Printf("%s  port=%d  (via %s)\n", event.Domain, event.Port, event.Meta.ProxyIP)
-//	}
-func (client *Client) StreamHeliosDNS(requestOptions *RequestOptions) iter.Seq2[HeliosDNSEvent, error] {
-	return streamFeed[HeliosDNSEvent](client, requestOptions, "feeds", "helio", "dns", "stream")
-}
+// // StreamHeliosDNS connects to the real-time Helios DNS capture stream and returns an
+// // iterator that yields one HeliosDNSEvent per newline-delimited JSON event. Each event
+// // records the hostname an inbound flow resolved and the destination port, useful for
+// // detecting C2 lookups and fast-flux infrastructure. TunnelID joins back to matching
+// // HTTP and TLS captures from the same flow. The stream runs until the connection is
+// // closed, the context in requestOptions is cancelled, or a decode error occurs.
+// //
+// // Example:
+// //
+// //	for event, err := range client.StreamHeliosDNS(nil) {
+// //		if err != nil {
+// //			log.Fatal(err)
+// //		}
+// //		fmt.Printf("%s  port=%d  (via %s)\n", event.Domain, event.Port, event.Meta.ProxyIP)
+// //	}
+// func (client *Client) StreamHeliosDNS(requestOptions *RequestOptions) iter.Seq2[HeliosDNSEvent,
+// error] {
+// 	return streamFeed[HeliosDNSEvent](client, requestOptions, "feeds", "helio", "dns", "stream")
+// }
 
 // StreamHeliosHTTP connects to the real-time Helios HTTP capture stream and returns an
 // iterator that yields one HeliosHTTPEvent per newline-delimited JSON event. Each event
@@ -173,6 +187,8 @@ func (client *Client) StreamHeliosDNS(requestOptions *RequestOptions) iter.Seq2[
 //		}
 //		fmt.Printf("%s %s %s\n", event.Details.Method, event.Details.URI, event.Domain)
 //	}
-func (client *Client) StreamHeliosHTTP(requestOptions *RequestOptions) iter.Seq2[HeliosHTTPEvent, error] {
+func (client *Client) StreamHeliosHTTP(
+	requestOptions *RequestOptions,
+) iter.Seq2[HeliosHTTPEvent, error] {
 	return streamFeed[HeliosHTTPEvent](client, requestOptions, "feeds", "helio", "http", "stream")
 }
