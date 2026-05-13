@@ -91,3 +91,67 @@ func (client *Client) FeedSnapshots(
 
 	return resp, nil
 }
+
+// FeedSnapshotMeta holds the metadata returned for a single Parquet snapshot.
+type FeedSnapshotMeta struct {
+	Stream    string `json:"stream"`
+	Kind      string `json:"kind"`
+	Hour      *int   `json:"hour,omitempty"`
+	ID        string `json:"id"`
+	Format    string `json:"format"`
+	Date      int64  `json:"date"`
+	CreatedAt int64  `json:"created_at"`
+	Size      int64  `json:"size"`
+	Rows      int64  `json:"rows"`
+	Checksum  string `json:"checksum"`
+	Schema    struct {
+		Fields []struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		} `json:"fields"`
+	} `json:"schema"`
+}
+
+// FeedSnapshotMeta returns JSON metadata for a single Parquet snapshot, including its
+// SHA-256 checksum, byte size, row count, parquet schema, and canonical date.
+//
+// stream must be one of: proxies, anonymizers, torrents, honeypot_http, honeypot_https,
+// honeypot_dns, or honeypot_adb.
+//
+// date is the snapshot identifier: YYYY-MM-DD for daily rollups, YYYY-MM-DD/HH for past
+// hourlies, or "latest" for the most recent hourly snapshot.
+//
+// Example:
+//
+//	meta, err := client.FeedSnapshotMeta("proxies", "latest", nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Printf("rows=%d checksum=%s\n", meta.Rows, meta.Checksum)
+func (client *Client) FeedSnapshotMeta(
+	stream string,
+	date string,
+	requestOptions *RequestOptions,
+) (FeedSnapshotMeta, error) {
+	path, err := url.JoinPath(client.BaseAPI.String(), "feeds", stream, "export", date, "meta")
+	if err != nil {
+		return FeedSnapshotMeta{}, fmt.Errorf("creating path for feed snapshot meta request: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return FeedSnapshotMeta{}, fmt.Errorf(
+			"making request for feed snapshot meta (%s, %s): %w",
+			stream,
+			date,
+			err,
+		)
+	}
+
+	resp, err := requestJSON[FeedSnapshotMeta](requestOptions, client, req, http.StatusOK)
+	if err != nil {
+		return FeedSnapshotMeta{}, fmt.Errorf("requesting JSON data: %w", err)
+	}
+
+	return resp, nil
+}
