@@ -1,174 +1,93 @@
 package synthient
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 )
 
-// AnonymizersQuery defines the set of filters and output options used when
-// requesting the Synthient anonymizers feed.
-//
-// Fields are translated into HTTP query parameters by StreamAnonymizersFeed /
-// DownloadAnonymizersFeed. Leave string fields empty to omit that filter.
-//
-// Typical values include:
-//   - Provider: feed source/provider identifier (e.g. "BIRDPROXIES").
-//   - Type: anonymizer category/type (e.g. "RESIDENTIAL_PROXY").
-//   - LastObserved: recency window for when an entry was last observed
-//     (API-specific, e.g. "7D").
-//   - CountryCode: ISO 3166-1 alpha-2 country code (e.g. "US").
-//   - Format: output format (e.g. "CSV").
-//   - Full: when true, request the “full” dataset if supported by the API.
-//   - Order: sort order.
-type AnonymizersQuery struct {
-	Provider     string
-	Type         string
-	LastObserved string
-	CountryCode  string
-	Format       string
-	Full         bool
-	Order        string
+// FeedSnapshot represents a single Parquet snapshot entry returned by the feeds export endpoint.
+type FeedSnapshot struct {
+	Kind         string `json:"kind"`
+	Date         string `json:"date"`
+	Hour         *int   `json:"hour,omitempty"`
+	SizeBytes    int64  `json:"size_bytes"`
+	RowCount     int64  `json:"row_count"`
+	Checksum     string `json:"checksum"`
+	ID           string `json:"id"`
+	CreatedAt    int64  `json:"created_at"`
+	DownloadPath string `json:"download_path"`
 }
 
-// StreamAnonymizersFeed starts a streaming HTTP GET request for the Synthient
-// “anonymizers” feed and returns the response body as an io.ReadCloser.
+// FeedSnapshotsPage is a single page of results from FeedSnapshots.
+type FeedSnapshotsPage struct {
+	Stream     string         `json:"stream"`
+	Feeds      []FeedSnapshot `json:"feeds"`
+	NextCursor string         `json:"next_cursor"`
+}
+
+// FeedSnapshotsOptions controls pagination for the FeedSnapshots call.
+type FeedSnapshotsOptions struct {
+	// Limit is the page size. Defaults to 100; values above 500 are clamped by the API.
+	Limit int
+	// Cursor is the opaque pagination token from the previous page's NextCursor field.
+	// Leave empty on the first call.
+	Cursor string
+}
+
+// FeedSnapshots returns one page of available daily and hourly Parquet snapshots for the
+// given stream. Pages are ordered newest-first and capped at 500 rows by the API.
 //
-// The returned reader contains the raw feed payload (for example, CSV when
-// query.Format is "CSV"). Callers MUST ALWAYS close the returned ReadCloser.
-// For large feeds, prefer streaming consumption (io.Copy, bufio.Scanner, or a
-// CSV reader) instead of reading the entire body into memory.
+// stream must be one of: proxies, anonymizers, torrents, honeypot_http, honeypot_https,
+// honeypot_dns, or honeypot_adb.
 //
-// Query fields are translated into request parameters:
-//   - Provider     -> provider
-//   - Type         -> type
-//   - LastObserved -> last_observed
-//   - CountryCode  -> country_code
-//   - Full         -> full
-//   - Format       -> format
-//   - Order        -> order
-//
-// Request behavior (timeouts, headers, etc.) can be customized via options.
-// The request is expected to return http.StatusOK; non-OK responses are
-// returned as errors.
+// Pass FeedSnapshotsPage.NextCursor back via opts.Cursor to fetch the next page.
+// NextCursor is empty on the final page.
 //
 // Example:
 //
-//	stream, err := client.StreamAnonymizersFeed(synthient.AnonymizersQuery{
-//		Provider:     "BIRDPROXIES",
-//		Type:         "RESIDENTIAL_PROXY",
-//		LastObserved: "7D",
-//		Format:       "CSV",
-//		CountryCode:  "US",
-//		Full:         false,
-//		Order:        "desc",
-//	}, nil)
+//	page, err := client.FeedSnapshots("proxies", &synthient.FeedSnapshotsOptions{Limit: 50}, nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
-//	defer stream.Close()
-func (client *Client) StreamAnonymizersFeed(
-	query AnonymizersQuery,
-	options *RequestOptions,
-) (io.ReadCloser, error) {
-	params := url.Values{}
-	if query.Provider != "" {
-		params.Add("provider", query.Provider)
-	}
-	if query.Type != "" {
-		params.Add("type", query.Type)
-	}
-	if query.LastObserved != "" {
-		params.Add("last_observed", query.LastObserved)
-	}
-	if query.CountryCode != "" {
-		params.Add("country_code", query.CountryCode)
-	}
-	params.Add("full", strconv.FormatBool(query.Full))
-	params.Add("format", query.Format)
-	params.Add("order", query.Order)
-
-	path, err := url.JoinPath(client.BaseFeeds.String(), "feeds", "anonymizers")
-	if err != nil {
-		return nil, fmt.Errorf("creating url for anonymizer feed: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?%s", path, params.Encode()), nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request for anonymizer data: %w", err)
-	}
-
-	reader, err := request(options, client, req, http.StatusOK)
-	if err != nil {
-		return nil, fmt.Errorf("making request: %w", err)
-	}
-	return reader, nil
-}
-
-// DownloadAnonymizersFeed downloads the Synthient “anonymizers” feed to a file.
-//
-// This is a convenience wrapper around StreamAnonymizersFeed that streams the
-// HTTP response body directly to disk (via io.Copy) to avoid buffering the
-// entire feed in memory. It returns the number of bytes written.
-//
-// filepath must not already exist. If it does, DownloadAnonymizersFeed returns
-// ErrFileExists (wrapped) and does not modify the filesystem. On success, the
-// file is created, written, and fsynced (file.Sync) before returning.
-//
-// Request behavior (timeouts, headers, etc.) can be customized via options.
-// The query is interpreted the same way as StreamAnonymizersFeed.
-//
-// Example:
-//
-//	n, err := client.DownloadAnonymizersFeed(synthient.AnonymizersQuery{
-//		Provider:     "BIRDPROXIES",
-//		Type:         "RESIDENTIAL_PROXY",
-//		LastObserved: "7D",
-//		Format:       "CSV",
-//		CountryCode:  "US",
-//		Full:         false,
-//		Order:        "desc",
-//	}, "anonymizers.csv", nil)
-//	if err != nil {
-//		log.Fatal(err)
+//	for _, snap := range page.Feeds {
+//		fmt.Printf("%s %s %d bytes\n", snap.Kind, snap.ID, snap.SizeBytes)
 //	}
-//	log.Printf("wrote %d bytes\n", n)
-func (client *Client) DownloadAnonymizersFeed(
-	query AnonymizersQuery,
-	filepath string,
-	options *RequestOptions,
-) (int64, error) {
-	_, err := os.Stat(filepath)
-	if !errors.Is(err, fs.ErrNotExist) {
-		return 0, fmt.Errorf("creating file at %s: %w", filepath, ErrFileExists)
-	}
-
-	body, err := client.StreamAnonymizersFeed(query, options)
+func (client *Client) FeedSnapshots(
+	stream string,
+	options *FeedSnapshotsOptions,
+	requestOptions *RequestOptions,
+) (FeedSnapshotsPage, error) {
+	path, err := url.JoinPath(client.BaseAPI.String(), "feeds", stream, "export")
 	if err != nil {
-		return 0, fmt.Errorf("making request: %w", err)
+		return FeedSnapshotsPage{}, fmt.Errorf("creating path for feed snapshots request: %w", err)
 	}
-	defer func() { _ = body.Close() }()
 
-	file, err := os.Create(filepath)
+	req, err := http.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return 0, fmt.Errorf("creating output file (path: %s): %w", filepath, err)
+		return FeedSnapshotsPage{}, fmt.Errorf(
+			"making request for feed snapshots (%s): %w",
+			stream,
+			err,
+		)
 	}
-	defer func() { _ = file.Close() }()
 
-	bytes, err := io.Copy(file, body)
+	if options != nil {
+		q := req.URL.Query()
+		if options.Limit > 0 {
+			q.Set("limit", strconv.Itoa(options.Limit))
+		}
+		if options.Cursor != "" {
+			q.Set("cursor", options.Cursor)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := requestJSON[FeedSnapshotsPage](requestOptions, client, req, http.StatusOK)
 	if err != nil {
-		return 0, fmt.Errorf("streaming response to file: %w", err)
+		return FeedSnapshotsPage{}, fmt.Errorf("requesting JSON data: %w", err)
 	}
 
-	err = file.Sync()
-	if err != nil {
-		return 0, fmt.Errorf("syncing output to file: %w", err)
-	}
-
-	return bytes, nil
+	return resp, nil
 }
