@@ -34,7 +34,7 @@ func request(
 	if strings.TrimSpace(client.Token) == "" {
 		return nil, ErrNoToken
 	}
-	request.Header.Add("Authorization", client.Token)
+	request.Header.Add("X-Api-Key", client.Token)
 	request = request.WithContext(options.Context)
 
 	response, err := client.HttpClient.Do(request)

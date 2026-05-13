@@ -1,6 +1,8 @@
 package synthient
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,21 +42,20 @@ type IP struct {
 		Latitude  float64 `json:"latitude"`
 		GeoHash   string  `json:"geo_hash"`
 	} `json:"location"`
-	IPData struct {
-		Devices []struct {
+	Intelligence struct {
+		RiskScore  int      `json:"risk_score"`
+		Behavior   []string `json:"behavior"`
+		Categories []string `json:"categories"`
+		Devices    []struct {
 			OS      string `json:"os"`
 			Version string `json:"version"`
 		} `json:"devices"`
-		DeviceCount int      `json:"device_count"`
-		Behavior    []string `json:"behavior"`
-		Categories  []string `json:"categories"`
-		Enriched    []struct {
+		Providers []struct {
 			Provider string `json:"provider"`
 			Type     string `json:"type"`
-			LastSeen string `json:"last_seen"`
-		} `json:"enriched"`
-		IPRisk int `json:"ip_risk"`
-	} `json:"ip_data"`
+			LastSeen int64  `json:"last_seen"`
+		} `json:"providers"`
+	} `json:"intelligence"`
 }
 
 // GetIP looks up enrichment data for a single IP address.
@@ -89,4 +90,51 @@ func (client *Client) GetIP(ip string, options *RequestOptions) (IP, error) {
 	}
 
 	return resp, nil
+}
+
+// GetIPs looks up enrichment data for multiple IP addresses in a single request.
+//
+// It performs an HTTP POST request to the Synthient bulk IP lookup endpoint,
+// sending the provided IPs as a JSON body, and returns the results in the same
+// order as the input slice. The request is expected to return http.StatusOK;
+// non-OK responses are returned as errors.
+//
+// options can be used to customize request behavior (timeouts, headers, etc.).
+//
+// Example:
+//
+//	results, err := client.GetIPs([]string{"8.8.8.8", "1.1.1.1"}, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, info := range results {
+//		fmt.Printf("%s: risk=%d\n", info.IP, info.Intelligence.RiskScore)
+//	}
+func (client *Client) GetIPs(ips []string, options *RequestOptions) ([]IP, error) {
+	path, err := url.JoinPath(client.BaseAPI.String(), "lookup", "ips")
+	if err != nil {
+		return []IP{}, fmt.Errorf("creating path for ips request: %w", err)
+	}
+
+	body, err := json.Marshal(struct {
+		IPs []string `json:"ips"`
+	}{IPs: ips})
+	if err != nil {
+		return []IP{}, fmt.Errorf("encoding ips request body: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	if err != nil {
+		return []IP{}, fmt.Errorf("making request for ips: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := requestJSON[struct {
+		Results []IP `json:"results"`
+	}](options, client, req, http.StatusOK)
+	if err != nil {
+		return []IP{}, fmt.Errorf("requesting JSON data: %w", err)
+	}
+
+	return resp.Results, nil
 }

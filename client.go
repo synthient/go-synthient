@@ -46,8 +46,8 @@ func NewClient(token string) Client {
 		Token:      token,
 		BaseAPI: url.URL{
 			Scheme: "https",
-			Host:   "v3api.synthient.com",
-			Path:   "/api/v3",
+			Host:   "api.synthient.com",
+			Path:   "/api/v4",
 		},
 		BaseFeeds: url.URL{
 			Scheme: "https",
