@@ -1,6 +1,9 @@
 package synthient
 
-import "iter"
+import (
+	"io"
+	"iter"
+)
 
 // HeliosHTTPEvent is a single HTTP capture delivered by the Helios HTTP sensor stream.
 type HeliosHTTPEvent struct {
@@ -191,4 +194,56 @@ func (client *Client) StreamHeliosHTTP(
 	requestOptions *RequestOptions,
 ) iter.Seq2[HeliosHTTPEvent, error] {
 	return streamFeed[HeliosHTTPEvent](client, requestOptions, "feeds", "helio", "http", "stream")
+}
+
+// DownloadHeliosHTTP downloads a Helios HTTP capture Parquet snapshot and returns a
+// streaming reader. The API issues a 307 redirect to a presigned URL; this method follows
+// it automatically.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	r, err := client.DownloadHeliosHTTP("latest", nil, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadHeliosHTTP(
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	return downloadFeed(client, requestOptions, date, hour, "feeds", "helio", "http")
+}
+
+// DownloadHeliosTLS downloads a Helios TLS capture Parquet snapshot and returns a
+// streaming reader. The API issues a 307 redirect to a presigned URL; this method follows
+// it automatically.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	r, err := client.DownloadHeliosTLS("latest", nil, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadHeliosTLS(
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	return downloadFeed(client, requestOptions, date, hour, "feeds", "helio", "https")
 }

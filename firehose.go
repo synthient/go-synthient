@@ -3,6 +3,7 @@ package synthient
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"iter"
 	"net/http"
 	"net/url"
@@ -138,4 +139,80 @@ func (client *Client) StreamAnonymizer(requestOptions *RequestOptions) iter.Seq2
 //	}
 func (client *Client) StreamTorrent(requestOptions *RequestOptions) iter.Seq2[TorrentEvent, error] {
 	return streamFeed[TorrentEvent](client, requestOptions, "feeds", "torrents", "stream")
+}
+
+// DownloadProxy downloads a proxy feed Parquet snapshot and returns a streaming reader.
+// The API issues a 307 redirect to a presigned URL; this method follows it automatically.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	r, err := client.DownloadProxy("latest", nil, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadProxy(
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	return downloadFeed(client, requestOptions, date, hour, "feeds", "proxies")
+}
+
+// DownloadAnonymizer downloads an anonymizer feed Parquet snapshot and returns a streaming
+// reader. The API issues a 307 redirect to a presigned URL; this method follows it
+// automatically.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	r, err := client.DownloadAnonymizer("latest", nil, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadAnonymizer(
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	return downloadFeed(client, requestOptions, date, hour, "feeds", "anonymizers")
+}
+
+// DownloadTorrent downloads a torrent feed Parquet snapshot and returns a streaming reader.
+// The API issues a 307 redirect to a presigned URL; this method follows it automatically.
+//
+// date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
+// a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
+// pointer in the range 0–23.
+//
+// The caller must close the returned reader.
+//
+// Example:
+//
+//	r, err := client.DownloadTorrent("latest", nil, nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer r.Close()
+//	_, err = io.Copy(f, r)
+func (client *Client) DownloadTorrent(
+	date string,
+	hour *int,
+	requestOptions *RequestOptions,
+) (io.ReadCloser, error) {
+	return downloadFeed(client, requestOptions, date, hour, "feeds", "torrents")
 }

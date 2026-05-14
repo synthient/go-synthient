@@ -157,6 +157,37 @@ func (client *Client) FeedSnapshotMeta(
 	return resp, nil
 }
 
+func downloadFeed(
+	client *Client,
+	requestOptions *RequestOptions,
+	date string,
+	hour *int,
+	pathPrefixSegments ...string,
+) (io.ReadCloser, error) {
+	label := pathPrefixSegments[len(pathPrefixSegments)-1]
+	segments := append(pathPrefixSegments, "export", date)
+	if hour != nil {
+		segments = append(segments, strconv.Itoa(*hour))
+	}
+
+	path, err := url.JoinPath(client.BaseAPI.String(), segments...)
+	if err != nil {
+		return nil, fmt.Errorf("creating path for %s download request: %w", label, err)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("making request for %s download (%s): %w", label, date, err)
+	}
+
+	body, err := request(requestOptions, client, req, http.StatusOK)
+	if err != nil {
+		return nil, fmt.Errorf("requesting %s snapshot: %w", label, err)
+	}
+
+	return body, nil
+}
+
 // DownloadFeedSnapshot downloads a Parquet snapshot and returns a streaming reader for its
 // contents. The API issues a 307 redirect to a presigned URL valid for 24 hours; this
 // method follows the redirect automatically.
@@ -185,30 +216,5 @@ func (client *Client) DownloadFeedSnapshot(
 	hour *int,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	segments := []string{"feeds", stream, "export", date}
-	if hour != nil {
-		segments = append(segments, strconv.Itoa(*hour))
-	}
-
-	path, err := url.JoinPath(client.BaseAPI.String(), segments...)
-	if err != nil {
-		return nil, fmt.Errorf("creating path for feed snapshot download request: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"making request for feed snapshot download (%s, %s): %w",
-			stream,
-			date,
-			err,
-		)
-	}
-
-	body, err := request(requestOptions, client, req, http.StatusOK)
-	if err != nil {
-		return nil, fmt.Errorf("requesting feed snapshot: %w", err)
-	}
-
-	return body, nil
+	return downloadFeed(client, requestOptions, date, hour, "feeds", stream)
 }
