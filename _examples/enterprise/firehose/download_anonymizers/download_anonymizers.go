@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 
@@ -11,22 +10,9 @@ import (
 func main() {
 	client := synthient.NewClient(os.Getenv("SYNTHIENT_API_KEY"))
 
-	r, err := client.DownloadAnonymizer("latest", nil, nil)
+	_, err := client.DownloadAnonymizer("latest", nil, "anonymizers-latest.parquet", nil)
 	if err != nil {
 		log.Fatalf("failed to download anonymizer snapshot: %s", err)
 	}
-	defer func() { _ = r.Close() }()
-
-	filename := "anonymizers-latest.parquet"
-	f, err := os.Create(filename)
-	if err != nil {
-		log.Fatalf("failed to create output file: %s", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	_, err = io.Copy(f, r)
-	if err != nil {
-		log.Fatalf("failed to write snapshot: %s", err)
-	}
-	log.Println("downloaded", filename)
+	log.Println("downloaded anonymizers-latest.parquet")
 }

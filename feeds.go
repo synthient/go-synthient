@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 )
 
@@ -162,6 +163,7 @@ func downloadFeed(
 	requestOptions *RequestOptions,
 	date string,
 	hour *int,
+	filename string,
 	pathPrefixSegments ...string,
 ) (io.ReadCloser, error) {
 	label := pathPrefixSegments[len(pathPrefixSegments)-1]
@@ -185,7 +187,21 @@ func downloadFeed(
 		return nil, fmt.Errorf("requesting %s snapshot: %w", label, err)
 	}
 
-	return body, nil
+	if filename == "" {
+		return body, nil
+	}
+
+	defer func() { _ = body.Close() }()
+	f, err := os.Create(filename)
+	if err != nil {
+		return nil, fmt.Errorf("creating file %s: %w", filename, err)
+	}
+	defer func() { _ = f.Close() }()
+	_, err = io.Copy(f, body)
+	if err != nil {
+		return nil, fmt.Errorf("writing %s snapshot to %s: %w", label, filename, err)
+	}
+	return nil, nil
 }
 
 // DownloadFeedSnapshot downloads a Parquet snapshot and returns a streaming reader for its
@@ -199,22 +215,30 @@ func downloadFeed(
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// If filename is non-empty the snapshot is written to that file and the returned reader is
+// nil. If filename is empty the caller receives the raw reader and must close it.
 //
-// Example:
+// Example (write to file):
 //
 //	hour := 21
-//	r, err := client.DownloadFeedSnapshot("proxies", "2026-05-07", &hour, nil)
+//	_, err := client.DownloadFeedSnapshot("proxies", "2026-05-07", &hour, "proxies.parquet", nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// Example (stream reader):
+//
+//	r, err := client.DownloadFeedSnapshot("proxies", "2026-05-07", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadFeedSnapshot(
 	stream string,
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", stream)
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", stream)
 }

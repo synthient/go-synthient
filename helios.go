@@ -196,54 +196,60 @@ func (client *Client) StreamHeliosHTTP(
 	return streamFeed[HeliosHTTPEvent](client, requestOptions, "feeds", "helio", "http", "stream")
 }
 
-// DownloadHeliosHTTP downloads a Helios HTTP capture Parquet snapshot and returns a
-// streaming reader. The API issues a 307 redirect to a presigned URL; this method follows
-// it automatically.
+// DownloadHeliosHTTP downloads a Helios HTTP capture Parquet snapshot. If filename is
+// non-empty the snapshot is written to that file and the returned reader is nil. If
+// filename is empty the caller receives the raw reader and must close it. The API issues
+// a 307 redirect to a presigned URL; this method follows it automatically.
 //
 // date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// Example (write to file):
 //
-// Example:
+//	_, err := client.DownloadHeliosHTTP("latest", nil, "helios-http.parquet", nil)
 //
-//	r, err := client.DownloadHeliosHTTP("latest", nil, nil)
+// Example (stream reader):
+//
+//	r, err := client.DownloadHeliosHTTP("latest", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadHeliosHTTP(
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", "helio", "http")
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", "helio", "http")
 }
 
-// DownloadHeliosTLS downloads a Helios TLS capture Parquet snapshot and returns a
-// streaming reader. The API issues a 307 redirect to a presigned URL; this method follows
-// it automatically.
+// DownloadHeliosTLS downloads a Helios TLS capture Parquet snapshot. If filename is
+// non-empty the snapshot is written to that file and the returned reader is nil. If
+// filename is empty the caller receives the raw reader and must close it. The API issues
+// a 307 redirect to a presigned URL; this method follows it automatically.
 //
 // date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// Example (write to file):
 //
-// Example:
+//	_, err := client.DownloadHeliosTLS("latest", nil, "helios-tls.parquet", nil)
 //
-//	r, err := client.DownloadHeliosTLS("latest", nil, nil)
+// Example (stream reader):
+//
+//	r, err := client.DownloadHeliosTLS("latest", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadHeliosTLS(
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", "helio", "https")
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", "helio", "https")
 }

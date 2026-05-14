@@ -141,78 +141,89 @@ func (client *Client) StreamTorrent(requestOptions *RequestOptions) iter.Seq2[To
 	return streamFeed[TorrentEvent](client, requestOptions, "feeds", "torrents", "stream")
 }
 
-// DownloadProxy downloads a proxy feed Parquet snapshot and returns a streaming reader.
-// The API issues a 307 redirect to a presigned URL; this method follows it automatically.
+// DownloadProxy downloads a proxy feed Parquet snapshot. If filename is non-empty the
+// snapshot is written to that file and the returned reader is nil. If filename is empty
+// the caller receives the raw reader and must close it. The API issues a 307 redirect to
+// a presigned URL; this method follows it automatically.
 //
 // date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// Example (write to file):
 //
-// Example:
+//	_, err := client.DownloadProxy("latest", nil, "proxies.parquet", nil)
 //
-//	r, err := client.DownloadProxy("latest", nil, nil)
+// Example (stream reader):
+//
+//	r, err := client.DownloadProxy("latest", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadProxy(
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", "proxies")
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", "proxies")
 }
 
-// DownloadAnonymizer downloads an anonymizer feed Parquet snapshot and returns a streaming
-// reader. The API issues a 307 redirect to a presigned URL; this method follows it
-// automatically.
+// DownloadAnonymizer downloads an anonymizer feed Parquet snapshot. If filename is
+// non-empty the snapshot is written to that file and the returned reader is nil. If
+// filename is empty the caller receives the raw reader and must close it. The API issues
+// a 307 redirect to a presigned URL; this method follows it automatically.
 //
 // date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// Example (write to file):
 //
-// Example:
+//	_, err := client.DownloadAnonymizer("latest", nil, "anonymizers.parquet", nil)
 //
-//	r, err := client.DownloadAnonymizer("latest", nil, nil)
+// Example (stream reader):
+//
+//	r, err := client.DownloadAnonymizer("latest", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadAnonymizer(
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", "anonymizers")
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", "anonymizers")
 }
 
-// DownloadTorrent downloads a torrent feed Parquet snapshot and returns a streaming reader.
-// The API issues a 307 redirect to a presigned URL; this method follows it automatically.
+// DownloadTorrent downloads a torrent feed Parquet snapshot. If filename is non-empty the
+// snapshot is written to that file and the returned reader is nil. If filename is empty
+// the caller receives the raw reader and must close it. The API issues a 307 redirect to
+// a presigned URL; this method follows it automatically.
 //
 // date accepts "latest" for the most recent hourly snapshot, or a YYYY-MM-DD string for
 // a daily rollup. For a specific hourly within the current UTC day, set hour to a non-nil
 // pointer in the range 0–23.
 //
-// The caller must close the returned reader.
+// Example (write to file):
 //
-// Example:
+//	_, err := client.DownloadTorrent("latest", nil, "torrents.parquet", nil)
 //
-//	r, err := client.DownloadTorrent("latest", nil, nil)
+// Example (stream reader):
+//
+//	r, err := client.DownloadTorrent("latest", nil, "", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
 //	defer r.Close()
-//	_, err = io.Copy(f, r)
 func (client *Client) DownloadTorrent(
 	date string,
 	hour *int,
+	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, "feeds", "torrents")
+	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", "torrents")
 }
