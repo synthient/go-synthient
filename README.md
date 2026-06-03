@@ -220,6 +220,49 @@ for event, err := range client.StreamHeliosTLS(nil) {
 
 [`HeliosTLSEvent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#HeliosTLSEvent) carries the fully parsed ClientHello in `Details` ([`*HeliosTLSDetails`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#HeliosTLSDetails)), which is `nil` when the sensor could not parse the handshake. Details includes cipher suites, extensions, supported groups, signature algorithms, key share groups, supported versions, and boolean handshake flags (`extended_master_secret`, `renegotiation_info`, `has_grease`, etc.).
 
+## gRPC schema introspection
+
+[`client.GRPCSchema`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.GRPCSchema) uses gRPC server reflection to fetch protobuf file descriptors from `grpc.synthient.com:443`. Pass `nil` to resolve all services, or supply a list of fully-qualified service names:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+defer cancel()
+
+// all services
+result, err := client.GRPCSchema(ctx, nil)
+if err != nil {
+    if msg := synthient.ExplainGRPCError(err); msg != "" {
+        log.Fatal(msg)
+    }
+    log.Fatal(err)
+}
+for _, svc := range result.Symbols {
+    fmt.Println(svc)
+}
+for _, f := range result.DescriptorSet.File {
+    fmt.Println(f.GetName(), f.GetPackage())
+}
+```
+
+```go
+// specific symbol
+result, err := client.GRPCSchema(ctx, &synthient.GRPCSchemaOptions{
+    Symbols: []string{"synthient.lookup.v1.LookupService"},
+})
+```
+
+[`GRPCSchemaResult`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#GRPCSchemaResult) fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `Endpoint` | `string` | Normalized address that was queried |
+| `Symbols` | `[]string` | Service symbols that were resolved |
+| `DescriptorSet` | `*descriptorpb.FileDescriptorSet` | All file descriptors in topological order |
+
+[`NormalizeGRPCEndpoint`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#NormalizeGRPCEndpoint) and [`ExplainGRPCError`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#ExplainGRPCError) are exported for use in CLI applications that need custom endpoint handling or human-readable error messages.
+
+> **Note:** `GRPCSchema` adds `google.golang.org/grpc` and `google.golang.org/protobuf` to your module's dependency graph. If you only need REST API access these are still pulled in transitively, but no gRPC connections are made unless you call `GRPCSchema`.
+
 ## Client customization
 
 Override `BaseAPI` to point at a self-hosted endpoint:
