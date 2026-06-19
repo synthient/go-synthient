@@ -12,7 +12,7 @@ Synthient SDK for Go.
 go get -u github.com/synthient/go-synthient/v2
 ```
 
-Requires Go 1.23 or later (real-time streams use `iter.Seq2`).
+Requires Go 1.25 or later, matching the `go` directive in `go.mod`. (Real-time streams use `iter.Seq2`, available since Go 1.23.)
 
 ## Getting started
 
@@ -144,6 +144,12 @@ io.Copy(f, r)
 // specific hour
 hour := 21
 r, err := client.DownloadFeedSnapshot("proxies", "2026-05-07", &hour, nil)
+```
+
+Per-feed convenience wrappers take the same `(date, hour, filename, opts)` arguments with the stream pre-filled: [`DownloadProxy`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadProxy), [`DownloadAnonymizer`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadAnonymizer), [`DownloadTorrent`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadTorrent), [`DownloadHeliosHTTP`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadHeliosHTTP), and [`DownloadHeliosTLS`](https://pkg.go.dev/github.com/synthient/go-synthient/v2#Client.DownloadHeliosTLS). Pass a non-empty `filename` to write directly to disk instead of receiving a reader:
+
+```go
+_, err := client.DownloadHeliosTLS("latest", nil, "helios-tls.parquet", nil)
 ```
 
 ## Real-time firehose streams

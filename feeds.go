@@ -61,7 +61,9 @@ func (client *Client) FeedSnapshots(
 	options *FeedSnapshotsOptions,
 	requestOptions *RequestOptions,
 ) (FeedSnapshotsPage, error) {
-	path, err := url.JoinPath(client.BaseAPI.String(), "feeds", stream, "export")
+	segments := append([]string{"feeds"}, feedStreamPath(stream)...)
+	segments = append(segments, "export")
+	path, err := url.JoinPath(client.BaseAPI.String(), segments...)
 	if err != nil {
 		return FeedSnapshotsPage{}, fmt.Errorf("creating path for feed snapshots request: %w", err)
 	}
@@ -135,7 +137,9 @@ func (client *Client) FeedSnapshotMeta(
 	date string,
 	requestOptions *RequestOptions,
 ) (FeedSnapshotMeta, error) {
-	path, err := url.JoinPath(client.BaseAPI.String(), "feeds", stream, "export", date, "meta")
+	segments := append([]string{"feeds"}, feedStreamPath(stream)...)
+	segments = append(segments, "export", date, "meta")
+	path, err := url.JoinPath(client.BaseAPI.String(), segments...)
 	if err != nil {
 		return FeedSnapshotMeta{}, fmt.Errorf("creating path for feed snapshot meta request: %w", err)
 	}
@@ -156,6 +160,23 @@ func (client *Client) FeedSnapshotMeta(
 	}
 
 	return resp, nil
+}
+
+// feedStreamPath maps a public stream name to its API path segments. Honeypot
+// streams are served under helio/<protocol>; every other stream uses its name.
+func feedStreamPath(stream string) []string {
+	switch stream {
+	case "honeypot_http":
+		return []string{"helio", "http"}
+	case "honeypot_https":
+		return []string{"helio", "https"}
+	case "honeypot_dns":
+		return []string{"helio", "dns"}
+	case "honeypot_adb":
+		return []string{"helio", "adb"}
+	default:
+		return []string{stream}
+	}
 }
 
 func downloadFeed(
@@ -240,5 +261,6 @@ func (client *Client) DownloadFeedSnapshot(
 	filename string,
 	requestOptions *RequestOptions,
 ) (io.ReadCloser, error) {
-	return downloadFeed(client, requestOptions, date, hour, filename, "feeds", stream)
+	segments := append([]string{"feeds"}, feedStreamPath(stream)...)
+	return downloadFeed(client, requestOptions, date, hour, filename, segments...)
 }
